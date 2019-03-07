@@ -1,109 +1,85 @@
+let createError = require('http-errors');
 let express = require('express');
-let router = express.Router();
-let connection = require('../db/db');
-let Util = require('../util/util');
+let path = require('path');
+let cookieParser = require('cookie-parser');
+let logger = require('morgan');
+let bodyParser = require('body-parser');
+// let session = require('express-session');
+let token = require('./util/token');
 
-let {
-	copyJson
-} = new Util();
-let resWrap = {
-	"code": 0,
-  "data": {},
-	"msg": "",
-	"result": false
-};
-let mergeRes = (json, ...moreJson) => {
-	return Object.assign(copyJson(resWrap), json, ...moreJson);
-};
+let indexRouter = require('./routes/index');
+let usersRouter = require('./routes/users');
+let apiRouter = require('./routes/api');
 
-router.get('/', (req, res, next) => {
-	res.send('api');
-	return;
+let app = express();
+
+app.all('*', (req, res, next) => {
+	res.header("Access-Control-Allow-Origin", "http://localhost:8080");
+	res.header("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Auth-Token");
+	res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
+	res.header("Content-Type", "application/json;charset=utf-8");
+	res.header("Access-Control-Allow-Credentials", true);
+	next();
 });
 
-// 获取账号列表
-router.post('/getAccountList', (req, res, next) => {
-	let {
-		searchVal,
-		pageIndex,
-		pageSize
-	} = req.body;
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
 
- 	let sqlSearchVal = searchVal
- 		? `WHERE(name REGEXP '${searchVal}' OR email REGEXP '${searchVal}')`
- 		: '';
- 	let sqlPage = `limit ${(pageIndex-1)*pageSize}, ${pageSize}`;
- 	let sql = `SELECT SQL_CALC_FOUND_ROWS * FROM account ${sqlSearchVal} ${sqlPage}; SELECT FOUND_ROWS() as total;`;
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+// app.use(session({
+//     secret: 'sessionKey',
+//     resave: true,
+//     saveUninitialized: false,
+//     cookie: {
+//       maxAge : 1000 * 60 * 3,
+//     },
+// }));
 
-	connection.query(sql, (error, results, fields) => {
-	  if (error) throw error;
-	  return res.json({
-	  	data: {
-	  		list: results[0],
-	  		total: results[1][0].total
-	  	}
-	  });
-	});
+// app.use((req, res, next) => {
+// 	// if (!req.session.user) {
+// 	// 	res.json({
+// 	// 		code: 0,
+// 	// 		msg: '登录过期，请重新登录',
+// 	// 		result: false
+// 	// 	});
+// 	// }
+// 	next();
+// });
+ 
+app.use((req, res, next) => {
+	console.log(req.get('Auth-Token'));
+	// res.json({
+	// 	code: 0,
+	// 	msg: '登录过期，请重新登录',
+	// 	result: false,
+	// 	token: tokenStr
+	// });
+	next();
 });
 
-// 登录
-router.post('/login', (req, res, next) => {
-	let {
-		user,
-		password
-	} = req.body;
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/api', apiRouter);
 
-	let sql = `SELECT * FROM user WHERE(name = '${user}' OR phone = '${user}');`;
-
-	connection.query(sql, (error, results, fields) => {
-	  if (error) throw error;
-	  if (results.length === 0) {
-	  	return res.json(mergeRes({
-	  		msg: '该账号尚未注册',
-				result: false
-	  	}));
-	  };
-	  if (password !== results[0].password) {
-	  	return res.json(mergeRes({
-		  	msg: '密码错误，请重试',
-		  	result: false
-		  }));
-	  };
-	  return res.json(mergeRes({
-	  	msg: '登录成功',
-	  	result: true
-	  }));
-	});
+// catch 404 and forward to error handler
+app.use((req, res, next) => {
+  next(createError(404));
 });
 
-// 注册
-router.post('/register', (req, res, next) => {
-	let {
-		username,
-		phone,
-		email,
-		sex,
-		remark
-	} = req.body;
+// error handler
+app.use((err, req, res, next) => {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-	let sql01 = `SELECT * FROM user WHERE(username = '${username}' OR phone = '${phone}');`;
-
-	connection.query(sql01, (error, results, fields) => {
-	  if (error) throw error;
-	  if (results.length !== 0) {
-	  	return res.json(mergeRes({
-	  		msg: '该账号或手机号已被注册',
-				result: false
-	  	}));
-	  };
-	  let sql02 = `INSERT INTO user (username, phone, email, sex, remark) VALUES ('${username}', '${phone}', '${email}', '${sex}', '${remark}');`;
-	  connection.query(sql02, (error, results, fields) => {
-	  	return res.json(mergeRes({
-	  		msg: '注册成功',
-				result: true
-	  	}));
-	  });
-	});
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
 });
 
-module.exports = router;
+module.exports = app;
