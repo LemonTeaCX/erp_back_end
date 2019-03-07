@@ -2,12 +2,14 @@ let express = require('express');
 let router = express.Router();
 let connection = require('../db/db');
 let Util = require('../util/util');
+let md5 = require("blueimp-md5");
+let token = require('../util/token');
 
 let {
 	copyJson
 } = new Util();
 let resWrap = {
-	"code": 0,
+	"code": 1,
   "data": {},
 	"msg": "",
 	"result": false
@@ -16,13 +18,13 @@ let mergeRes = (json, ...moreJson) => {
 	return Object.assign(copyJson(resWrap), json, ...moreJson);
 };
 
-router.get('/', function(req, res, next) {
+router.get('/', (req, res, next) => {
 	res.send('api');
 	return;
 });
 
 // 获取账号列表
-router.post('/getAccountList', function(req, res, next) {
+router.post('/getAccountList', (req, res, next) => {
 	let {
 		searchVal,
 		pageIndex,
@@ -35,7 +37,7 @@ router.post('/getAccountList', function(req, res, next) {
  	let sqlPage = `limit ${(pageIndex-1)*pageSize}, ${pageSize}`;
  	let sql = `SELECT SQL_CALC_FOUND_ROWS * FROM account ${sqlSearchVal} ${sqlPage}; SELECT FOUND_ROWS() as total;`;
 
-	connection.query(sql, function (error, results, fields) {
+	connection.query(sql, (error, results, fields) => {
 	  if (error) throw error;
 	  return res.json({
 	  	data: {
@@ -47,15 +49,17 @@ router.post('/getAccountList', function(req, res, next) {
 });
 
 // 登录
-router.post('/login', function(req, res, next) {
+router.post('/login', (req, res, next) => {
 	let {
 		user,
 		password
 	} = req.body;
 
-	let sql = `SELECT * FROM user WHERE(mobile = '${user}' OR email = '${user}')`;
+	password = md5(password);
 
-	connection.query(sql, function (error, results, fields) {
+	let sql = `SELECT * FROM user WHERE(username = '${user}' OR phone = '${user}');`;
+
+	connection.query(sql, (error, results, fields) => {
 	  if (error) throw error;
 	  if (results.length === 0) {
 	  	return res.json(mergeRes({
@@ -69,10 +73,45 @@ router.post('/login', function(req, res, next) {
 		  	result: false
 		  }));
 	  };
+	  // req.session.user = user;
+	  let tokenStr = token.createToken({ lemon: 123 }, 1000 * 60 * 3);
 	  return res.json(mergeRes({
 	  	msg: '登录成功',
-	  	result: true
+	  	result: true,
+	  	token: tokenStr
 	  }));
+	});
+});
+
+// 注册
+router.post('/register', (req, res, next) => {
+	let {
+		username,
+		password,
+		phone,
+		email,
+		sex,
+		remark
+	} = req.body;
+
+	let sql01 = `SELECT * FROM user WHERE(username = '${username}' OR phone = '${phone}');`;
+
+	connection.query(sql01, (error, results, fields) => {
+	  if (error) throw error;
+	  if (results.length !== 0) {
+	  	return res.json(mergeRes({
+	  		msg: '该账号或手机号已被注册',
+				result: false
+	  	}));
+	  };
+	  password = md5(password);
+	  let sql02 = `INSERT INTO user (username, password, phone, email, sex, remark) VALUES ('${username}', '${password}', '${phone}', '${email}', '${sex}', '${remark}');`;
+	  connection.query(sql02, (error, results, fields) => {
+	  	return res.json(mergeRes({
+	  		msg: '注册成功',
+				result: true
+	  	}));
+	  });
 	});
 });
 
