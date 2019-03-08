@@ -4,7 +4,6 @@ let path = require('path');
 let cookieParser = require('cookie-parser');
 let logger = require('morgan');
 let bodyParser = require('body-parser');
-// let session = require('express-session');
 let token = require('./util/token');
 
 let indexRouter = require('./routes/index');
@@ -31,35 +30,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-// app.use(session({
-//     secret: 'sessionKey',
-//     resave: true,
-//     saveUninitialized: false,
-//     cookie: {
-//       maxAge : 1000 * 60 * 3,
-//     },
-// }));
 
-// app.use((req, res, next) => {
-// 	// if (!req.session.user) {
-// 	// 	res.json({
-// 	// 		code: 0,
-// 	// 		msg: '登录过期，请重新登录',
-// 	// 		result: false
-// 	// 	});
-// 	// }
-// 	next();
-// });
- 
 app.use((req, res, next) => {
-	console.log(req.get('Auth-Token'));
-	// res.json({
-	// 	code: 0,
-	// 	msg: '登录过期，请重新登录',
-	// 	result: false,
-	// 	token: tokenStr
-	// });
-	next();
+	let tokenStr = req.get('Auth-Token'),
+		verifyRes = token.verifyToken(tokenStr),
+		needToken = token.needToken(req.url);
+
+	if (req.method === 'OPTIONS' || verifyRes.result || !needToken) return next();
+	// 登录过期
+	res.status(401).json({
+		msg: '登录过期，请重新登录',
+		result: false
+	});
 });
 
 app.use('/', indexRouter);
