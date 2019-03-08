@@ -5,9 +5,11 @@ let Util = require('../util/util');
 let md5 = require("blueimp-md5");
 let token = require('../util/token');
 
-let {
-	copyJson
+let { 
+	copyJson, 
+	treeMenu
 } = new Util();
+
 let resWrap = {
 	"code": 1,
   "data": {},
@@ -21,6 +23,21 @@ let mergeRes = (json, ...moreJson) => {
 router.get('/', (req, res, next) => {
 	res.send('api');
 	return;
+});
+
+// 获取菜单
+router.post('/getMenu', (req, res, next) => {
+ 	let sql = `SELECT * FROM menu;`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  let menuArr = treeMenu(results);
+	  return res.json(mergeRes({
+	  	result: true,
+	  	data: menuArr
+	  }));
+	});
 });
 
 // 获取账号列表
@@ -73,8 +90,7 @@ router.post('/login', (req, res, next) => {
 		  	result: false
 		  }));
 	  };
-	  // req.session.user = user;
-	  let tokenStr = token.createToken({ lemon: 123 }, 1000 * 60 * 3);
+	  let tokenStr = token.signToken({ user: user });
 	  return res.json(mergeRes({
 	  	msg: '登录成功',
 	  	result: true,
