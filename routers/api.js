@@ -11,7 +11,6 @@ let {
 } = new Util();
 
 let resWrap = {
-	"code": 1,
   "data": {},
 	"msg": "",
 	"result": false
@@ -78,23 +77,25 @@ router.post('/login', (req, res, next) => {
 
 	connection.query(sql, (error, results, fields) => {
 	  if (error) throw error;
-	  if (results.length === 0) {
+
+	  let userInfo = results[0];
+	  if (!userInfo) {
 	  	return res.json(mergeRes({
 	  		msg: '该账号尚未注册',
 				result: false
 	  	}));
 	  };
-	  if (password !== results[0].password) {
+	  if (password !== userInfo.password) {
 	  	return res.json(mergeRes({
 		  	msg: '密码错误，请重试',
 		  	result: false
 		  }));
 	  };
-	  let tokenStr = token.signToken({ user: user });
 	  return res.json(mergeRes({
 	  	msg: '登录成功',
 	  	result: true,
-	  	token: tokenStr
+	  	token: token.signToken({user}),
+	  	data: userInfo
 	  }));
 	});
 });
