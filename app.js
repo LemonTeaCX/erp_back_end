@@ -12,13 +12,13 @@ let apiRouter = require('./routes/api');
 
 let app = express();
 
-app.all('*', (req, res, next) => {
-	res.header("Access-Control-Allow-Origin", "http://localhost:8080");
-	res.header("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Auth-Token");
-	res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
-	res.header("Content-Type", "application/json;charset=utf-8");
-	res.header("Access-Control-Allow-Credentials", true);
-	next();
+app.all('/api/*', (req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,Auth-Token");
+  res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
+  res.header("Content-Type", "application/json;charset=utf-8");
+  res.header("Access-Control-Allow-Credentials", true);
+  next();
 });
 
 // view engine setup
@@ -31,17 +31,18 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 验证登录token
 app.use((req, res, next) => {
-	let tokenStr = req.get('Auth-Token'),
-		verifyRes = token.verifyToken(tokenStr),
-		needToken = token.needToken(req.url);
+  let tokenStr = req.get('Auth-Token'),
+    verifyRes = token.verifyToken(tokenStr),
+    needToken = token.needToken(req.url);
 
-	if (req.method === 'OPTIONS' || verifyRes.result || !needToken) return next();
-	// 登录过期
-	res.status(401).json({
-		msg: '登录过期，请重新登录',
-		result: false
-	});
+  if (req.method === 'OPTIONS' || verifyRes.result || !needToken) return next();
+  // 登录过期
+  res.status(401).json({
+    msg: '登录过期，请重新登录',
+    result: false
+  });
 });
 
 app.use('/', indexRouter);
