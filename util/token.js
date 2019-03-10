@@ -2,8 +2,10 @@ const jwt = require('jsonwebtoken');
 
 const TOKEN_KEY = 'token_key';
 const NO_TOKEN_URL = [
+  '/',
+  '/index',
   '/api/login',
-  '/register'
+  '/api/register'
 ];
 class Token {
   constructor(options) {}
