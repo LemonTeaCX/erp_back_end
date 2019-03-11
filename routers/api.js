@@ -5,10 +5,10 @@ let Util = require('../util/util');
 let md5 = require("blueimp-md5");
 let token = require('../util/token');
 
-let { 
+let {
 	copyJson, 
 	treeMenu
-} = new Util();
+} = Util;
 
 let resWrap = {
   "data": {},
@@ -55,12 +55,13 @@ router.post('/getAccountList', (req, res, next) => {
 
 	connection.query(sql, (error, results, fields) => {
 	  if (error) throw error;
-	  return res.json({
+	  return res.json(mergeRes({
 	  	data: {
 	  		list: results[0],
 	  		total: results[1][0].total
-	  	}
-	  });
+	  	},
+	  	result: true
+	  }));
 	});
 });
 
@@ -128,6 +129,21 @@ router.post('/register', (req, res, next) => {
 	  		msg: '注册成功',
 				result: true
 	  	}));
+	  });
+	});
+});
+
+// 获取前端博客
+router.post('/getBlogs', (req, res, next) => {
+	let { id } = req.body;
+ 	let sqlId = id ? `WHERE(id = '${id}');` : '';
+ 	let sql = `SELECT * FROM blogs ${sqlId};`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+	  return res.json({
+	  	data: results,
+	  	result: true
 	  });
 	});
 });
