@@ -1,9 +1,8 @@
-class Util {
-	constructor(options) {}
-	copyJson(json) {
-		return JSON.parse(JSON.stringify(json));
-	}
-	treeMenu(arr = []) {
+module.exports = {
+  copyJson(json) {
+    return JSON.parse(JSON.stringify(json));
+  },
+  treeMenu(arr = []) {
     if (!arr.length || arr.length === 0) return;
     // 删除 所有 nodes,以防止多次调用
     arr.forEach(function (item) {
@@ -29,6 +28,5 @@ class Util {
       }
     });
     return val;
-	}
+  }
 }
-module.exports = Util;
