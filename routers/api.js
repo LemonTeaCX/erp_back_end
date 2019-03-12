@@ -47,19 +47,148 @@ router.post('/getAccountList', (req, res, next) => {
 		pageSize
 	} = req.body;
 
+	let sqlAuth = `SELECT * FROM auth;`;
+	let sqlRole = `SELECT * FROM role;`;
  	let sqlSearchVal = searchVal
  		? `WHERE(name REGEXP '${searchVal}' OR email REGEXP '${searchVal}')`
  		: '';
  	let sqlPage = `limit ${(pageIndex-1)*pageSize}, ${pageSize}`;
  	let sql = `SELECT SQL_CALC_FOUND_ROWS * FROM account ${sqlSearchVal} ${sqlPage}; SELECT FOUND_ROWS() as total;`;
 
-	connection.query(sql, (error, results, fields) => {
+	connection.query(sql + sqlAuth + sqlRole, (error, results, fields) => {
 	  if (error) throw error;
+
+	  let list = results[0],
+	  	auths = results[2],
+	  	roles = results[3];
+
+	  list = list.map(item => {
+	  	item.status = item.status === 1 ? true : false;
+	  	item.role = roles.filter(role => {
+	  		return role.value === item.role;
+	  	})[0];
+	  	item.auth = auths.filter(auth => {
+	  		return item.auth.indexOf(auth.value) !== -1;
+	  	});
+	  	return item;
+	  });
 	  return res.json(mergeRes({
 	  	data: {
-	  		list: results[0],
+	  		list: list,
 	  		total: results[1][0].total
 	  	},
+	  	result: true
+	  }));
+	});
+});
+
+// 获取账号详情
+router.post('/getAccountDetail', (req, res, next) => {
+	let { id } = req.body;
+ 	let sql = `SELECT * FROM account WHERE(id = '${id}');`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  let account = results[0];
+	  account.status = account.status === 1 ? true : false;
+	  account.auth = account.auth.split(',').map(Number);
+
+	  return res.json(mergeRes({
+	  	data: account || {},
+	  	result: true
+	  }));
+	});
+});
+
+// 获取所有权限
+router.get('/getAuth', (req, res, next) => {
+ 	let sql = `SELECT * FROM auth;`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  return res.json(mergeRes({
+	  	data: results,
+	  	result: true
+	  }));
+	});
+});
+
+// 获取所有角色
+router.get('/getRole', (req, res, next) => {
+ 	let sql = `SELECT * FROM role;`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  return res.json(mergeRes({
+	  	data: results,
+	  	result: true
+	  }));
+	});
+});
+
+// 添加账号
+router.post('/addAccount', (req, res, next) => {
+	console.log(req.body);
+	let {
+		name,
+		email,
+		auth,
+		role,
+		status,
+		remark
+	} = req.body;
+	status = status ? 1 : 0;
+	auth = auth.join(',');
+ 	let sql = `INSERT INTO account (name, email, auth, role, status, remark) VALUES ('${name}', '${email}', '${auth}', ${role}, ${status}, '${remark}');`;
+
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  return res.json(mergeRes({
+	  	msg: '添加账号成功',
+	  	result: true
+	  }));
+	});
+});
+
+// 编辑账号
+router.post('/editAccount', (req, res, next) => {
+	let {
+		id,
+		name,
+		email,
+		auth,
+		role,
+		status,
+		remark
+	} = req.body;
+	status = status ? 1 : 0;
+	auth = auth.join(',');
+
+ 	let sql = `UPDATE account SET name='${name}', email='${email}', auth='${auth}', role=${role}, status=${status}, remark='${remark}' WHERE(id=${id});`;
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  return res.json(mergeRes({
+	  	msg: '修改账号信息成功',
+	  	result: true
+	  }));
+	});
+});
+
+// 删除账号
+router.post('/delAccount', (req, res, next) => {
+	let { ids } = req.body;
+	ids = ids.join(',');
+ 	let sql = `DELETE FROM account WHERE(id in (${ids}));`;
+	connection.query(sql, (error, results, fields) => {
+	  if (error) throw error;
+
+	  return res.json(mergeRes({
+	  	msg: '删除账号成功',
 	  	result: true
 	  }));
 	});
